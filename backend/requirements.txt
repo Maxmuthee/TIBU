@@ -1,0 +1,37 @@
+# FastAPI
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+gunicorn==23.0.0
+pydantic-settings==2.5.0
+python-multipart==0.0.9
+
+# Azure OpenAI + AI Search
+openai==1.55.3
+httpx==0.28.1
+azure-search-documents==11.6.0
+azure-identity==1.18.0
+aiohttp>=3.9.0
+
+# LangChain (RAG orchestration)
+langchain==0.3.0
+langchain-openai==0.2.0
+langchain-community==0.3.0
+
+# Database
+sqlalchemy==2.0.35
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+alembic==1.13.0
+
+# Document processing
+pypdf==4.3.0
+python-docx==1.1.0
+openpyxl==3.1.5
+xlrd==2.0.1
+
+# Web scraping (crawl4ai is used locally only, not needed at runtime)
+beautifulsoup4==4.12.3
+requests==2.32.3
+
+# Utilities
+python-dotenv==1.0.1

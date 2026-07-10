@@ -1,0 +1,17 @@
+# Keep the production image lean — runtime data lives in Azure AI Search,
+# not on disk. The crawler/ingestion are local-only dev tools.
+data/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.env.local
+.env.production
+.git/
+.gitignore
+.vscode/
+.idea/
+scripts/

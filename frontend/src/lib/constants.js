@@ -1,0 +1,18 @@
+export const MAJORS = [
+  'Business Administration',
+  'Computer Science',
+  'Information Technology',
+  'Finance',
+  'Marketing',
+  'Communication & Media',
+  'Journalism & Media Studies',
+  'International Relations',
+  'Applied Mathematics',
+  'Public Health',
+  'Law',
+  'Counseling Psychology',
+  'Education',
+  'Economics',
+  'Nursing',
+  'Other',
+]

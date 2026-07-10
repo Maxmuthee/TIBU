@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Azure
+.azure/
+
+# Data
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+backend/data/scraped/*
+!backend/data/scraped/.gitkeep
+backend/data/pdfs/*
+!backend/data/pdfs/.gitkeep
+backend/data/sample/*
+!backend/data/sample/.gitkeep
+backend/crawl_log.txt
+data/
