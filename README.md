@@ -143,4 +143,4 @@ tibu/
 
 ## Team
 
-Built by **Maxwell Gitahi**
+Built by **Maxwell Gitahi****Ted Njeru****Teddy Baraka**
