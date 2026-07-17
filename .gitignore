@@ -41,3 +41,6 @@ backend/data/sample/*
 !backend/data/sample/.gitkeep
 backend/crawl_log.txt
 data/
+
+CLAUDE.md
+DEPLOY.md
