@@ -42,5 +42,5 @@ backend/data/sample/*
 backend/crawl_log.txt
 data/
 
-CLAUDE.md
-DEPLOY.md
+*.md
+!README.md
