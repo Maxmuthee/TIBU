@@ -1,161 +1,55 @@
-"""Campus Navigator — USIU-Africa building locations and directions."""
+"""Campus Navigator — USIU-Africa building locations and OpenStreetMap routing.
 
-from fastapi import APIRouter
+Building coordinates come from `app/resources/campus_locations.json`, which is
+sourced from OpenStreetMap (Overpass API, campus boundary way 321620567) and
+refreshable via `scripts/fetch_campus_osm.py`.
+
+Walking directions are proxied to OpenRouteService (foot-walking profile, which
+routes along real OSM footpaths). The API key stays server-side.
+"""
+
+import json
+from pathlib import Path
+
+import httpx
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.config import get_settings
+
 router = APIRouter()
+settings = get_settings()
 
 # ---------------------------------------------------------------------------
-# Verified USIU-Africa campus coordinates
-# Campus center: -1.2163, 36.8789  (Kasarani, Nairobi)
-# All pins verified to sit within the campus boundary.
+# Canonical location data (OpenStreetMap-derived, curated names/categories)
 # ---------------------------------------------------------------------------
-CAMPUS_LOCATIONS = {
-    # ── Gates ────────────────────────────────────────────────────────────────
-    "gate_a": {
-        "name": "Main Gate (Gate A)",
-        "lat": -1.2148, "lng": 36.8784,
-        "building_code": "GATE-A",
-        "category": "Access",
-        "description": "Main campus entrance off USIU Road. Security check-in for visitors.",
-    },
-    "gate_b": {
-        "name": "Gate B",
-        "lat": -1.2140, "lng": 36.8800,
-        "building_code": "GATE-B",
-        "category": "Access",
-        "description": "Secondary campus entrance. Often used by pedestrians from Kasarani.",
-    },
+_DATA_FILE = Path(__file__).resolve().parents[1] / "resources" / "campus_locations.json"
 
-    # ── Academic buildings ────────────────────────────────────────────────────
-    "csb": {
-        "name": "Chandaria School of Business",
-        "lat": -1.2172, "lng": 36.8793,
-        "building_code": "CSB",
-        "category": "Academic",
-        "description": "Business school with lecture theatres LT1–LT4, faculty offices, and the Bloomberg Trading Lab.",
-        "departments": ["Business Administration", "Finance", "Marketing", "Entrepreneurship"],
-    },
-    "shss": {
-        "name": "School of Humanities & Social Sciences",
-        "lat": -1.2175, "lng": 36.8790,
-        "building_code": "SHSS",
-        "category": "Academic",
-        "description": "Houses Communication, Journalism, International Relations, and Psychology departments. Rooftop event space.",
-        "departments": ["Communication & Media", "Journalism", "International Relations", "Psychology", "Counseling"],
-    },
-    "sst": {
-        "name": "School of Science & Technology",
-        "lat": -1.2168, "lng": 36.8791,
-        "building_code": "SST",
-        "category": "Academic",
-        "description": "Computer Science, IT, and Applied Sciences lecture halls, computer labs, and faculty offices.",
-        "departments": ["Computer Science", "Information Technology", "Applied Mathematics"],
-    },
-    "sph": {
-        "name": "School of Pharmacy & Health Sciences",
-        "lat": -1.2176, "lng": 36.8787,
-        "building_code": "SPH",
-        "category": "Academic",
-        "description": "Nursing, Public Health, and Pharmacy programs. Includes clinical simulation labs.",
-        "departments": ["Nursing", "Public Health", "Pharmacy"],
-    },
 
-    # ── Administration ────────────────────────────────────────────────────────
-    "admin": {
-        "name": "Administration Block",
-        "lat": -1.2163, "lng": 36.8789,
-        "building_code": "ADMIN",
-        "category": "Administration",
-        "description": "Registrar's Office, Finance Office, Student Affairs, and senior administration.",
-    },
-    "registrar": {
-        "name": "Registrar's Office",
-        "lat": -1.2163, "lng": 36.8789,
-        "building_code": "REG",
-        "category": "Administration",
-        "description": "Academic records, transcripts, enrollment letters, and course registration.",
-    },
-    "finance": {
-        "name": "Finance Office",
-        "lat": -1.2163, "lng": 36.8789,
-        "building_code": "FIN",
-        "category": "Administration",
-        "description": "Fee payments, fee statements, M-Pesa reconciliation, and bursary inquiries.",
-    },
-    "international": {
-        "name": "International Student Office",
-        "lat": -1.2162, "lng": 36.8790,
-        "building_code": "ISO",
-        "category": "Administration",
-        "description": "Student visas, work permits, and immigration support for international students.",
-    },
+def _load_locations() -> list[dict]:
+    data = json.loads(_DATA_FILE.read_text(encoding="utf-8"))
+    return data["locations"]
 
-    # ── Library & Learning ────────────────────────────────────────────────────
-    "library": {
-        "name": "USIU-Africa Library",
-        "lat": -1.2167, "lng": 36.8786,
-        "building_code": "LIB",
-        "category": "Library & Learning",
-        "description": "Open 24 hours. Study rooms, computer workstations, digital databases, and printing services.",
-    },
 
-    # ── Student Life ──────────────────────────────────────────────────────────
-    "student_centre": {
-        "name": "Student Centre",
-        "lat": -1.2158, "lng": 36.8778,
-        "building_code": "SC",
-        "category": "Student Life",
-        "description": "Java House café, student lounges, meeting rooms, and the Student Government office.",
-    },
-    "cafeteria": {
-        "name": "Main Cafeteria",
-        "lat": -1.2165, "lng": 36.8783,
-        "building_code": "CAF",
-        "category": "Student Life",
-        "description": "Main campus dining hall with multiple food vendors. Open 7 AM – 9 PM on weekdays.",
-    },
-    "wellness": {
-        "name": "Wellness Center",
-        "lat": -1.2170, "lng": 36.8786,
-        "building_code": "WELL",
-        "category": "Student Life",
-        "description": "Counseling services, health clinic, and mental health programs. Confidential appointments available.",
-    },
-    "chapel": {
-        "name": "Chapel",
-        "lat": -1.2160, "lng": 36.8792,
-        "building_code": "CHPL",
-        "category": "Student Life",
-        "description": "Interfaith chapel for prayer, meditation, and religious services.",
-    },
+CAMPUS_LOCATIONS: list[dict] = _load_locations()
 
-    # ── Sports & Recreation ───────────────────────────────────────────────────
-    "sports": {
-        "name": "Sports Complex",
-        "lat": -1.2155, "lng": 36.8800,
-        "building_code": "SPORT",
-        "category": "Sports & Recreation",
-        "description": "Football pitch, basketball courts, swimming pool, and the main gymnasium.",
-    },
-    "gym": {
-        "name": "Gymnasium",
-        "lat": -1.2156, "lng": 36.8798,
-        "building_code": "GYM",
-        "category": "Sports & Recreation",
-        "description": "Fully equipped gym open to students. Membership via Student Centre.",
-    },
-}
+ORS_DIRECTIONS_URL = "https://api.openrouteservice.org/v2/directions/foot-walking/geojson"
 
 
 class LocationQuery(BaseModel):
     destination: str
 
 
+class RouteQuery(BaseModel):
+    # [lng, lat] pairs — GeoJSON / OpenRouteService coordinate order.
+    start: list[float]
+    end: list[float]
+
+
 @router.get("/locations")
 async def list_locations():
     """List all known campus locations."""
-    return {"locations": list(CAMPUS_LOCATIONS.values())}
+    return {"locations": CAMPUS_LOCATIONS}
 
 
 @router.post("/find")
@@ -164,8 +58,7 @@ async def find_location(query: LocationQuery):
     search = query.destination.lower().strip()
     matches = []
 
-    for loc in CAMPUS_LOCATIONS.values():
-        # Match on name, description, code, category, or departments list
+    for loc in CAMPUS_LOCATIONS:
         searchable = " ".join([
             loc.get("name", ""),
             loc.get("description", ""),
@@ -182,5 +75,58 @@ async def find_location(query: LocationQuery):
 
     return {
         "found": False,
-        "message": f"No location found for '{query.destination}'. Try a building name, department, or category like 'library', 'administration', or 'Computer Science'.",
+        "message": (
+            f"No location found for '{query.destination}'. Try a building name, "
+            "department, or category like 'library', 'administration', or 'Computer Science'."
+        ),
     }
+
+
+@router.post("/route")
+async def route(query: RouteQuery):
+    """Walking route between two points along real OSM campus paths.
+
+    Proxies OpenRouteService so the API key is never exposed to the browser.
+    Returns a GeoJSON LineString plus distance (m) and duration (s). Falls back
+    to a straight line if the key is missing or the service is unreachable, so
+    the map still shows a usable direction.
+    """
+    if len(query.start) != 2 or len(query.end) != 2:
+        raise HTTPException(status_code=422, detail="start and end must be [lng, lat] pairs")
+
+    def straight_line(reason: str) -> dict:
+        (slng, slat), (elng, elat) = query.start, query.end
+        dx = (elat - slat) * 111_000
+        dy = (elng - slng) * 111_000
+        dist = (dx * dx + dy * dy) ** 0.5
+        return {
+            "ok": False,
+            "fallback": reason,
+            "geometry": {"type": "LineString", "coordinates": [query.start, query.end]},
+            "distance": round(dist),
+            "duration": round(dist / 1.4),  # ~1.4 m/s walking
+        }
+
+    api_key = getattr(settings, "openrouteservice_api_key", "")
+    if not api_key:
+        return straight_line("no_api_key")
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                ORS_DIRECTIONS_URL,
+                headers={"Authorization": api_key, "Content-Type": "application/json"},
+                json={"coordinates": [query.start, query.end]},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        feature = data["features"][0]
+        summary = feature["properties"]["summary"]
+        return {
+            "ok": True,
+            "geometry": feature["geometry"],
+            "distance": round(summary.get("distance", 0)),
+            "duration": round(summary.get("duration", 0)),
+        }
+    except Exception:  # noqa: BLE001 — degrade gracefully to a straight line
+        return straight_line("routing_unavailable")

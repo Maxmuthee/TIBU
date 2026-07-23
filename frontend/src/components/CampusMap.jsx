@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { MapPin, Navigation, Search, X, Locate, ExternalLink } from 'lucide-react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapPin, Navigation, Search, X, Locate, ExternalLink, Route, Footprints, Loader2 } from 'lucide-react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { getLocations, findLocation } from '../services/api'
+import { getLocations, findLocation, routeDirections } from '../services/api'
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -26,19 +26,18 @@ const CATEGORY_COLORS = {
 
 const CATEGORIES = ['All', 'Academic', 'Administration', 'Library & Learning', 'Student Life', 'Sports & Recreation', 'Access']
 
-// Coordinates sourced directly from OpenStreetMap Overpass API (USIU-Africa, Kasarani)
-// Way IDs referenced where available for traceability
+// Offline safety net — used only if the backend is unreachable. Kept in sync
+// with backend/app/resources/campus_locations.json (OpenStreetMap-derived coords,
+// Overpass boundary way 321620567). Refresh via scripts/fetch_campus_osm.py.
 const FALLBACK_LOCATIONS = [
-  // ── Access — OSM way 595040448 / node 5672326233
-  { name: 'Main Gate (Gate A)',                   lat: -1.2197532, lng: 36.8793841, building_code: 'GATE-A', category: 'Access',             description: 'Main campus entrance off USIU Road. Security check-in for all visitors.' },
+  // ── Access
+  { name: 'Main Gate (Gate A)',                   lat: -1.2196746, lng: 36.8793756, building_code: 'GATE-A', category: 'Access',             description: 'Main campus entrance off USIU Road. Security check-in for all visitors.' },
 
-  // ── Administration — OSM ways 1075663165, 1075663167
+  // ── Administration
   { name: 'Administration Block',                 lat: -1.2188232, lng: 36.8791227, building_code: 'ADMIN', category: 'Administration',     description: 'Registrar, Finance, Student Affairs, and senior administration offices.' },
   { name: 'Lilian Beam ICT Center',               lat: -1.2184731, lng: 36.8790823, building_code: 'ICT',   category: 'Administration',     description: 'Computer labs, e-learning support, IT helpdesk, and printing services.' },
 
-  // ── Academic — OSM ways 1075663166, 1075663170, 1075663172, 1075663173, 1075663176
-  //              1075663171, 1075663168, 1417712686, 1417712688, 1417712689
-  //              1075687895, 1075687897
+  // ── Academic
   { name: 'Chandaria School of Business',         lat: -1.2171589, lng: 36.8794834, building_code: 'CSB',    category: 'Academic',           description: 'Business school with lecture theatres, Bloomberg Trading Lab, and faculty offices.' },
   { name: 'School of Business',                   lat: -1.2175404, lng: 36.8794110, building_code: 'SB',     category: 'Academic',           description: 'Business faculty classrooms and offices.' },
   { name: 'School of Humanities & Social Sciences', lat: -1.2142389, lng: 36.8787028, building_code: 'SHSS', category: 'Academic',           description: 'Journalism, International Relations, Psychology, and Communication & Media.' },
@@ -52,14 +51,23 @@ const FALLBACK_LOCATIONS = [
   { name: 'R & T Lecture Halls',                  lat: -1.2174120, lng: 36.8801047, building_code: 'RT',     category: 'Academic',           description: 'Lecture halls R and T.' },
   { name: 'Lab 7',                                lat: -1.2184120, lng: 36.8794885, building_code: 'LAB7',   category: 'Academic',           description: 'Science and technology laboratory.' },
 
-  // ── Library — OSM way 1411772355
+  // ── Library & Learning
   { name: 'USIU-Africa Library',                  lat: -1.2162864, lng: 36.8789390, building_code: 'LIB',   category: 'Library & Learning', description: 'Main university library. Study rooms, computer workstations, digital databases, and printing.' },
 
-  // ── Student Life — OSM ways 1075687902/1075687903, 1411772356, 1075663163/1075663164
+  // ── Student Life
   { name: 'Freida Brown Student Centre',          lat: -1.2154628, lng: 36.8776308, building_code: 'SC',    category: 'Student Life',       description: 'Java House café, student lounges, meeting rooms, and Student Government office.' },
   { name: 'Auditorium',                           lat: -1.2167837, lng: 36.8783598, building_code: 'AUD',   category: 'Student Life',       description: 'Main events and convocation venue.' },
-  { name: "Paul's Caffe",                         lat: -1.2182662, lng: 36.8785949, building_code: 'CAF',   category: 'Student Life',       description: 'On-campus café and dining near the administration area.' },
+  { name: "Paul's Caffe",                         lat: -1.2181971, lng: 36.8786826, building_code: 'CAF',   category: 'Student Life',       description: 'On-campus café and dining near the administration area.' },
+  { name: 'Cafellata',                            lat: -1.2176533, lng: 36.8781360, building_code: 'CAFL',  category: 'Student Life',       description: 'Café near the student hostels and Freida Brown Student Centre.' },
   { name: 'Student Hostels',                      lat: -1.2176389, lng: 36.8781597, building_code: 'HST',   category: 'Student Life',       description: 'On-campus student residential hostels.' },
+  { name: 'Laundry',                              lat: -1.2175506, lng: 36.8778050, building_code: 'LAUN',  category: 'Student Life',       description: 'Student laundry facility near the hostels.' },
+
+  // ── Sports & Recreation
+  { name: 'Swimming Pool',                        lat: -1.2149357, lng: 36.8778025, building_code: 'POOL',  category: 'Sports & Recreation', description: 'Outdoor swimming pool.' },
+  { name: 'Basketball Court',                     lat: -1.2170257, lng: 36.8778133, building_code: 'BBALL', category: 'Sports & Recreation', description: 'Outdoor basketball court.' },
+  { name: 'Football Pitch',                       lat: -1.2101038, lng: 36.8800416, building_code: 'FOOT',  category: 'Sports & Recreation', description: 'Main football pitch on the northern sports grounds.' },
+  { name: 'Rugby Field',                          lat: -1.2109997, lng: 36.8808282, building_code: 'RUGBY', category: 'Sports & Recreation', description: 'Rugby field on the northern sports grounds.' },
+  { name: 'Running Track',                        lat: -1.2100943, lng: 36.8800511, building_code: 'TRACK', category: 'Sports & Recreation', description: 'Athletics running track on the northern sports grounds.' },
 ]
 
 function makeIcon(color, selected = false) {
@@ -91,6 +99,29 @@ function FlyTo({ position }) {
   const map = useMap()
   useEffect(() => { if (position) map.flyTo(position, 18, { duration: 1.2 }) }, [position, map])
   return null
+}
+
+function FitRoute({ coords }) {
+  const map = useMap()
+  useEffect(() => {
+    if (coords && coords.length > 1) {
+      map.fitBounds(coords, { padding: [40, 40], maxZoom: 19 })
+    }
+  }, [coords, map])
+  return null
+}
+
+const routeStartIcon = L.divIcon({
+  className: '',
+  html: `<div style="width:14px;height:14px;background:#10b981;border:2.5px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(16,185,129,0.25)"></div>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+})
+
+function formatWalk(distance, duration) {
+  const mins = Math.max(1, Math.round(duration / 60))
+  const dist = distance >= 1000 ? `${(distance / 1000).toFixed(1)} km` : `${distance} m`
+  return `${dist} · ~${mins} min walk`
 }
 
 function CategoryPill({ label, active, onClick }) {
@@ -151,6 +182,8 @@ export default function CampusMap() {
   const [locating, setLocating]             = useState(false)
   const [error, setError]                   = useState(null)
   const [activeTab, setActiveTab] = useState('map')
+  const [route, setRoute]                   = useState(null)  // { coords, distance, duration, fallback, dest }
+  const [routing, setRouting]               = useState(false)
 
   useEffect(() => {
     getLocations()
@@ -204,6 +237,36 @@ export default function CampusMap() {
     )
   }
 
+  const handleDirections = async (loc) => {
+    setRouting(true)
+    setError(null)
+    // Start from the user's live position if available, else the Main Gate.
+    const gate = locations.find((l) => l.building_code === 'GATE-A') || locations[0]
+    const startLatLng = userPos || (gate ? [gate.lat, gate.lng] : CAMPUS_CENTER)
+    const start = [startLatLng[1], startLatLng[0]]  // -> [lng, lat]
+    const end = [loc.lng, loc.lat]
+    try {
+      const data = await routeDirections(start, end)
+      const coords = (data.geometry?.coordinates || []).map(([lng, lat]) => [lat, lng])
+      setRoute({
+        coords,
+        start: startLatLng,
+        distance: data.distance,
+        duration: data.duration,
+        fallback: data.fallback,
+        dest: loc.name,
+        fromUser: !!userPos,
+      })
+      setActiveTab('map')
+    } catch {
+      setError('Could not load directions. Check your connection and try again.')
+    } finally {
+      setRouting(false)
+    }
+  }
+
+  const clearRoute = () => setRoute(null)
+
   const openGoogleMaps = (loc) => {
     const url = userPos
       ? `https://www.google.com/maps/dir/${userPos[0]},${userPos[1]}/${loc.lat},${loc.lng}`
@@ -221,6 +284,7 @@ export default function CampusMap() {
     setSearch('')
     setError(null)
     setSelectedLoc(null)
+    setRoute(null)
   }
 
   const filteredLocations = locations.filter(
@@ -317,6 +381,27 @@ export default function CampusMap() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 {flyTo && <FlyTo position={flyTo} />}
+                {route?.coords?.length > 1 && <FitRoute coords={route.coords} />}
+                {route?.coords?.length > 1 && (
+                  <>
+                    <Polyline
+                      positions={route.coords}
+                      pathOptions={{
+                        color: route.fallback ? '#f59e0b' : '#1a3a6b',
+                        weight: 5,
+                        opacity: 0.85,
+                        dashArray: route.fallback ? '8 8' : undefined,
+                        lineJoin: 'round',
+                        lineCap: 'round',
+                      }}
+                    />
+                    {!route.fromUser && route.start && (
+                      <Marker position={route.start} icon={routeStartIcon}>
+                        <Popup><span className="text-xs font-semibold">Start · Main Gate</span></Popup>
+                      </Marker>
+                    )}
+                  </>
+                )}
                 {userPos && (
                   <Marker position={userPos} icon={userIcon}>
                     <Popup><span className="text-xs font-semibold">You are here</span></Popup>
@@ -378,13 +463,39 @@ export default function CampusMap() {
                           {distanceTo(selectedLoc)}m from your location
                         </p>
                       )}
-                      <button
-                        onClick={() => openGoogleMaps(selectedLoc)}
-                        className="mt-2 inline-flex items-center gap-1.5 bg-usiu-blue hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        Open in Google Maps
-                      </button>
+                      {route?.dest === selectedLoc.name && route.coords?.length > 1 && (
+                        <div className="mt-2 flex items-center gap-2 text-xs">
+                          <span className="inline-flex items-center gap-1.5 font-semibold text-usiu-blue bg-usiu-blue/10 px-2 py-1 rounded-lg">
+                            <Footprints className="w-3.5 h-3.5" />
+                            {formatWalk(route.distance, route.duration)}
+                          </span>
+                          {route.fallback && (
+                            <span className="text-amber-600" title="Live routing unavailable — showing a direct line.">
+                              (approx.)
+                            </span>
+                          )}
+                          <button onClick={clearRoute} className="text-slate-400 hover:text-slate-600 underline">
+                            clear
+                          </button>
+                        </div>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => handleDirections(selectedLoc)}
+                          disabled={routing}
+                          className="inline-flex items-center gap-1.5 bg-usiu-blue hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
+                        >
+                          {routing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Route className="w-3.5 h-3.5" />}
+                          {routing ? 'Routing...' : 'Directions'}
+                        </button>
+                        <button
+                          onClick={() => openGoogleMaps(selectedLoc)}
+                          className="inline-flex items-center gap-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Google Maps
+                        </button>
+                      </div>
                     </div>
                     <button onClick={() => setSelectedLoc(null)} className="p-1 text-slate-400 hover:text-slate-600 flex-shrink-0">
                       <X className="w-4 h-4" />

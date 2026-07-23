@@ -1,0 +1,256 @@
+{
+  "_meta": {
+    "source": "OpenStreetMap — USIU-Africa campus (Overpass API, boundary way 321620567)",
+    "note": "Coordinates are OSM footprint centers. Refresh with backend/scripts/fetch_campus_osm.py.",
+    "campus_center": [-1.2163, 36.8789]
+  },
+  "locations": [
+    {
+      "key": "gate_a",
+      "name": "Main Gate (Gate A)",
+      "lat": -1.2196746, "lng": 36.8793756,
+      "building_code": "GATE-A",
+      "category": "Access",
+      "description": "Main campus entrance off USIU Road. Security check-in for all visitors.",
+      "osm_id": "way/595040448"
+    },
+    {
+      "key": "admin",
+      "name": "Administration Block",
+      "lat": -1.2188232, "lng": 36.8791227,
+      "building_code": "ADMIN",
+      "category": "Administration",
+      "description": "Registrar, Finance, Student Affairs, and senior administration offices.",
+      "departments": ["Registrar", "Finance", "Student Affairs", "International Student Office"],
+      "osm_id": "way/1075663165"
+    },
+    {
+      "key": "ict",
+      "name": "Lilian Beam ICT Center",
+      "lat": -1.2184731, "lng": 36.8790823,
+      "building_code": "ICT",
+      "category": "Administration",
+      "description": "Computer labs, e-learning support, IT helpdesk, and printing services.",
+      "osm_id": "way/1075663167"
+    },
+    {
+      "key": "csb",
+      "name": "Chandaria School of Business",
+      "lat": -1.2171589, "lng": 36.8794834,
+      "building_code": "CSB",
+      "category": "Academic",
+      "description": "Business school with lecture theatres, Bloomberg Trading Lab, and faculty offices.",
+      "departments": ["Business Administration", "Finance", "Marketing", "Entrepreneurship"],
+      "osm_id": "way/1075663166"
+    },
+    {
+      "key": "sb",
+      "name": "School of Business",
+      "lat": -1.2175404, "lng": 36.8794110,
+      "building_code": "SB",
+      "category": "Academic",
+      "description": "Business faculty classrooms and offices.",
+      "osm_id": "way/1075663170"
+    },
+    {
+      "key": "shss",
+      "name": "School of Humanities & Social Sciences",
+      "lat": -1.2142389, "lng": 36.8787028,
+      "building_code": "SHSS",
+      "category": "Academic",
+      "description": "Journalism, International Relations, Psychology, and Communication & Media.",
+      "departments": ["Communication & Media", "Journalism", "International Relations", "Psychology", "Counseling"],
+      "osm_id": "way/1075687897"
+    },
+    {
+      "key": "science",
+      "name": "Science Complex",
+      "lat": -1.2150682, "lng": 36.8787343,
+      "building_code": "SCI",
+      "category": "Academic",
+      "description": "Computer Science, IT, and Applied Mathematics labs and lecture rooms.",
+      "departments": ["Computer Science", "Information Technology", "Applied Mathematics"],
+      "osm_id": "way/1075687895"
+    },
+    {
+      "key": "sgs",
+      "name": "School of Graduate Studies",
+      "lat": -1.2178625, "lng": 36.8796021,
+      "building_code": "SGS",
+      "category": "Academic",
+      "description": "Graduate and postgraduate programme administration and classrooms.",
+      "osm_id": "way/1075663172"
+    },
+    {
+      "key": "elc",
+      "name": "E-Learning Resource Center",
+      "lat": -1.2172755, "lng": 36.8800910,
+      "building_code": "ELC",
+      "category": "Academic",
+      "description": "Digital learning resources, online course support, and computer workstations.",
+      "osm_id": "way/1075663173"
+    },
+    {
+      "key": "ef",
+      "name": "E & F Lecture Halls",
+      "lat": -1.2182476, "lng": 36.8798264,
+      "building_code": "EF",
+      "category": "Academic",
+      "description": "Lecture halls E and F.",
+      "osm_id": "way/1417712688"
+    },
+    {
+      "key": "ij",
+      "name": "I & J Lecture Halls",
+      "lat": -1.2180813, "lng": 36.8796475,
+      "building_code": "IJ",
+      "category": "Academic",
+      "description": "Lecture halls I and J.",
+      "osm_id": "way/1417712686"
+    },
+    {
+      "key": "kl",
+      "name": "K & L Lecture Halls",
+      "lat": -1.2179121, "lng": 36.8799202,
+      "building_code": "KL",
+      "category": "Academic",
+      "description": "Lecture halls K and L.",
+      "osm_id": "way/1075663171"
+    },
+    {
+      "key": "mnopq",
+      "name": "M, N, O, P & Q Lecture Halls",
+      "lat": -1.2178049, "lng": 36.8799626,
+      "building_code": "MNOPQ",
+      "category": "Academic",
+      "description": "Lecture halls M, N, O, P, and Q.",
+      "osm_id": "way/1075663168"
+    },
+    {
+      "key": "rt",
+      "name": "R & T Lecture Halls",
+      "lat": -1.2174120, "lng": 36.8801047,
+      "building_code": "RT",
+      "category": "Academic",
+      "description": "Lecture halls R and T.",
+      "osm_id": "way/1075663176"
+    },
+    {
+      "key": "lab7",
+      "name": "Lab 7",
+      "lat": -1.2184120, "lng": 36.8794885,
+      "building_code": "LAB7",
+      "category": "Academic",
+      "description": "Science and technology laboratory.",
+      "osm_id": "way/1417712689"
+    },
+    {
+      "key": "library",
+      "name": "USIU-Africa Library",
+      "lat": -1.2162864, "lng": 36.8789390,
+      "building_code": "LIB",
+      "category": "Library & Learning",
+      "description": "Main university library. Study rooms, computer workstations, digital databases, and printing.",
+      "osm_id": "way/1411772355"
+    },
+    {
+      "key": "student_centre",
+      "name": "Freida Brown Student Centre",
+      "lat": -1.2154628, "lng": 36.8776308,
+      "building_code": "SC",
+      "category": "Student Life",
+      "description": "Java House cafe, student lounges, meeting rooms, and Student Government office.",
+      "osm_id": "way/1075687902"
+    },
+    {
+      "key": "auditorium",
+      "name": "Auditorium",
+      "lat": -1.2167837, "lng": 36.8783598,
+      "building_code": "AUD",
+      "category": "Student Life",
+      "description": "Main events and convocation venue.",
+      "osm_id": "way/1411772356"
+    },
+    {
+      "key": "pauls_caffe",
+      "name": "Paul's Caffe",
+      "lat": -1.2181971, "lng": 36.8786826,
+      "building_code": "CAF",
+      "category": "Student Life",
+      "description": "On-campus cafe and dining near the administration area.",
+      "osm_id": "way/1075663163"
+    },
+    {
+      "key": "cafellata",
+      "name": "Cafellata",
+      "lat": -1.2176533, "lng": 36.8781360,
+      "building_code": "CAFL",
+      "category": "Student Life",
+      "description": "Cafe near the student hostels and Freida Brown Student Centre.",
+      "osm_id": "node/4228879553"
+    },
+    {
+      "key": "hostels",
+      "name": "Student Hostels",
+      "lat": -1.2176389, "lng": 36.8781597,
+      "building_code": "HST",
+      "category": "Student Life",
+      "description": "On-campus student residential hostels.",
+      "osm_id": "way/1075662192"
+    },
+    {
+      "key": "laundry",
+      "name": "Laundry",
+      "lat": -1.2175506, "lng": 36.8778050,
+      "building_code": "LAUN",
+      "category": "Student Life",
+      "description": "Student laundry facility near the hostels.",
+      "osm_id": "way/1415487232"
+    },
+    {
+      "key": "pool",
+      "name": "Swimming Pool",
+      "lat": -1.2149357, "lng": 36.8778025,
+      "building_code": "POOL",
+      "category": "Sports & Recreation",
+      "description": "Outdoor swimming pool.",
+      "osm_id": "way/669236426"
+    },
+    {
+      "key": "basketball",
+      "name": "Basketball Court",
+      "lat": -1.2170257, "lng": 36.8778133,
+      "building_code": "BBALL",
+      "category": "Sports & Recreation",
+      "description": "Outdoor basketball court.",
+      "osm_id": "way/432092696"
+    },
+    {
+      "key": "football",
+      "name": "Football Pitch",
+      "lat": -1.2101038, "lng": 36.8800416,
+      "building_code": "FOOT",
+      "category": "Sports & Recreation",
+      "description": "Main football pitch on the northern sports grounds.",
+      "osm_id": "way/669236429"
+    },
+    {
+      "key": "rugby",
+      "name": "Rugby Field",
+      "lat": -1.2109997, "lng": 36.8808282,
+      "building_code": "RUGBY",
+      "category": "Sports & Recreation",
+      "description": "Rugby field on the northern sports grounds.",
+      "osm_id": "way/669236428"
+    },
+    {
+      "key": "track",
+      "name": "Running Track",
+      "lat": -1.2100943, "lng": 36.8800511,
+      "building_code": "TRACK",
+      "category": "Sports & Recreation",
+      "description": "Athletics running track on the northern sports grounds.",
+      "osm_id": "way/357793019"
+    }
+  ]
+}

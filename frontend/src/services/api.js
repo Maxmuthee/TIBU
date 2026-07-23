@@ -32,6 +32,9 @@ export const getCourseAdvice = (profile) =>
 export const getLocations = () => request('/map/locations');
 export const findLocation = (destination) =>
   request('/map/find', { method: 'POST', body: JSON.stringify({ destination }) });
+// start/end are [lng, lat] pairs (GeoJSON order)
+export const routeDirections = (start, end) =>
+  request('/map/route', { method: 'POST', body: JSON.stringify({ start, end }) });
 
 // Study Hub
 export const getPapers = (courseCode = '') =>

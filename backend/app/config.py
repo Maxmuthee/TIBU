@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     azure_search_api_key: str = ""
     azure_search_index_name: str = "tibu-knowledge-base"
 
+    # OpenRouteService — walking directions on the Campus Navigator map.
+    # Free key from https://openrouteservice.org/dev/#/signup
+    # Optional: without it, /api/map/route falls back to a straight line.
+    openrouteservice_api_key: str = ""
+
     # Database (optional — app works without it)
     database_url: str = ""
 
