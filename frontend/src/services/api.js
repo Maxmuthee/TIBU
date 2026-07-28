@@ -45,10 +45,6 @@ export const uploadPaper = async (formData) => {
   return res.json();
 };
 export const downloadPaperUrl = (paperId) => `${API_BASE}/study-hub/papers/${paperId}/download`;
-export const generateQuiz = ({ topic, num_questions = 5, difficulty = 'Medium' }) =>
-  request('/study-hub/generate-quiz', { method: 'POST', body: JSON.stringify({ topic, num_questions, difficulty }) });
-export const studyAsk = ({ question, conversation_history = [] }) =>
-  request('/study-hub/study-ask', { method: 'POST', body: JSON.stringify({ question, conversation_history }) });
 
 // Opportunities
 export const getInternships = () => request('/opportunities/internships');

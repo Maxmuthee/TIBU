@@ -1,18 +1,16 @@
-"""Study Hub — Past papers upload, search, and AI-powered study tools."""
+"""Study Hub — Past papers upload, listing, search, and download."""
 
 import json
-import re
 import hashlib
 import base64
+import io
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
-import io
 
-from app.services.rag_engine import openai_client, chat_client, search_client, settings
-from azure.search.documents.models import VectorizedQuery
+from app.services.rag_engine import settings
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
 
@@ -94,55 +92,6 @@ class PaperSearch(BaseModel):
     query: str = ""
 
 
-class QuizRequest(BaseModel):
-    topic: str
-    num_questions: int = 5
-    difficulty: str = "Medium"  # Easy, Medium, Hard
-
-
-class StudyAskRequest(BaseModel):
-    question: str
-    conversation_history: list[dict] | None = None
-
-
-# ── Shared helper: retrieve relevant knowledge chunks ──
-
-async def _retrieve_context(query: str, top_k: int = 5) -> tuple[str, list[str]]:
-    """Embed a query and retrieve relevant USIU knowledge chunks via hybrid search."""
-    embed_response = await openai_client.embeddings.create(
-        model=settings.azure_openai_embedding_deployment,
-        input=[query],
-    )
-    question_vector = embed_response.data[0].embedding
-
-    search_results = await search_client.search(
-        search_text=query,
-        vector_queries=[
-            VectorizedQuery(
-                vector=question_vector,
-                k_nearest_neighbors=top_k,
-                fields="content_vector",
-            )
-        ],
-        top=top_k,
-        select=["content", "title", "source"],
-    )
-
-    context_chunks = []
-    sources = []
-    async for result in search_results:
-        context_chunks.append(result["content"])
-        if result.get("source"):
-            sources.append(result["source"])
-
-    context_text = "\n\n---\n\n".join(context_chunks) if context_chunks else "No relevant documents found."
-    return context_text, list(set(sources))
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Existing endpoints
-# ═══════════════════════════════════════════════════════════════════════════
-
 @router.get("/papers")
 async def list_papers(course_code: str = ""):
     """List all uploaded past papers, optionally filtered by course code."""
@@ -207,134 +156,3 @@ async def search_papers(search: PaperSearch):
         elif search.query and search.query.lower() in paper.get("title", "").lower():
             results.append(paper)
     return {"results": results, "count": len(results)}
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# NEW: NotebookLLM-style Study AI endpoints
-# ═══════════════════════════════════════════════════════════════════════════
-
-QUIZ_SYSTEM_PROMPT = """You are TIBU's Quiz Generator for USIU-Africa students.
-
-Your task:
-- Generate a multiple-choice quiz based on the provided context from official USIU documents.
-- Each question MUST be grounded in the provided context — do not invent facts.
-- Questions should test understanding, not just rote memorisation.
-
-You MUST respond with valid JSON and nothing else. The JSON must follow this exact schema:
-{
-  "questions": [
-    {
-      "question": "The question text",
-      "options": ["A) option", "B) option", "C) option", "D) option"],
-      "correct_answer": "A",
-      "explanation": "Brief explanation of why A is correct, referencing the source material"
-    }
-  ]
-}
-
-Rules:
-- Generate exactly the number of questions requested.
-- Each question must have exactly 4 options labelled A through D.
-- correct_answer must be a single letter: A, B, C, or D.
-- Difficulty should match the requested level (Easy = factual recall, Medium = application/understanding, Hard = analysis/comparison).
-- Keep explanations concise (1-2 sentences).
-- Output ONLY the JSON object — no markdown, no code fences, no extra text.
-"""
-
-STUDY_SYSTEM_PROMPT = """You are TIBU's Study Tutor for USIU-Africa students.
-
-Your role:
-- Help students understand USIU concepts, courses, policies, and academic material.
-- Always base answers on the provided context from official university documents.
-- Explain concepts step by step — you're a tutor, not just a search engine.
-- Use examples relevant to USIU-Africa when possible.
-- If the context doesn't have enough information, say so honestly.
-- Encourage the student and offer to explain further.
-
-Teaching approach:
-1. Answer the question directly first.
-2. Provide a clear explanation with relevant details from the context.
-3. If helpful, break down complex topics into simpler parts.
-4. Cite the source document when referencing specific facts.
-"""
-
-
-@router.post("/generate-quiz")
-async def generate_quiz(req: QuizRequest):
-    """Generate a multiple-choice quiz from the USIU knowledge base."""
-    # Step 1: Retrieve relevant context
-    context_text, sources = await _retrieve_context(req.topic, top_k=8)
-
-    # Step 2: Build LLM prompt
-    messages = [
-        {"role": "system", "content": QUIZ_SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": (
-                f"Context from USIU-Africa documents:\n{context_text}\n\n---\n\n"
-                f"Generate exactly {req.num_questions} multiple-choice questions about: {req.topic}\n"
-                f"Difficulty level: {req.difficulty}"
-            ),
-        },
-    ]
-
-    # Step 3: Call Azure OpenAI
-    response = await chat_client.chat.completions.create(
-        model=settings.azure_chat_deployment,
-        messages=messages,
-        temperature=0.4,
-        max_tokens=2500,
-    )
-
-    raw = response.choices[0].message.content.strip()
-
-    # Step 4: Parse the JSON response (strip code fences if present)
-    cleaned = re.sub(r"^```(?:json)?\s*", "", raw)
-    cleaned = re.sub(r"\s*```$", "", cleaned)
-
-    try:
-        quiz_data = json.loads(cleaned)
-    except json.JSONDecodeError:
-        return {
-            "questions": [],
-            "sources": sources,
-            "error": "Failed to parse quiz. Please try again.",
-        }
-
-    return {
-        "questions": quiz_data.get("questions", []),
-        "sources": sources,
-    }
-
-
-@router.post("/study-ask")
-async def study_ask(req: StudyAskRequest):
-    """Answer a study question using the USIU knowledge base with a tutor persona."""
-    # Step 1: Retrieve relevant context
-    context_text, sources = await _retrieve_context(req.question, top_k=5)
-
-    # Step 2: Build messages
-    messages = [{"role": "system", "content": STUDY_SYSTEM_PROMPT}]
-
-    if req.conversation_history:
-        messages.extend(req.conversation_history[-6:])  # Last 3 exchanges
-
-    messages.append(
-        {
-            "role": "user",
-            "content": f"Context from USIU-Africa documents:\n{context_text}\n\n---\n\nStudent question: {req.question}",
-        }
-    )
-
-    # Step 3: Get LLM response
-    response = await chat_client.chat.completions.create(
-        model=settings.azure_chat_deployment,
-        messages=messages,
-        temperature=0.3,
-        max_tokens=1200,
-    )
-
-    return {
-        "answer": response.choices[0].message.content,
-        "sources": list(set(sources)),
-    }
