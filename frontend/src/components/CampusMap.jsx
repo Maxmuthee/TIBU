@@ -32,6 +32,7 @@ const CATEGORIES = ['All', 'Academic', 'Administration', 'Library & Learning', '
 const FALLBACK_LOCATIONS = [
   // ── Access
   { name: 'Main Gate (Gate A)',                   lat: -1.2196746, lng: 36.8793756, building_code: 'GATE-A', category: 'Access',             description: 'Main campus entrance off USIU Road. Security check-in for all visitors.' },
+  { name: 'Gate B',                               lat: -1.2137861, lng: 36.8805277, building_code: 'GATE-B', category: 'Access',             description: 'North-east campus entrance. Commonly used by pedestrians from the Kasarani side.' },
 
   // ── Administration
   { name: 'Administration Block',                 lat: -1.2188232, lng: 36.8791227, building_code: 'ADMIN', category: 'Administration',     description: 'Registrar, Finance, Student Affairs, and senior administration offices.' },
@@ -237,12 +238,31 @@ export default function CampusMap() {
     )
   }
 
+  // Resolve the user's live GPS position as a promise. Reuses an existing fix
+  // if we already have one; otherwise asks the browser for it.
+  const getCurrentPos = () =>
+    new Promise((resolve) => {
+      if (userPos) return resolve(userPos)
+      if (!navigator.geolocation) return resolve(null)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords = [pos.coords.latitude, pos.coords.longitude]
+          setUserPos(coords)
+          resolve(coords)
+        },
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      )
+    })
+
   const handleDirections = async (loc) => {
     setRouting(true)
     setError(null)
-    // Start from the user's live position if available, else the Main Gate.
+    // Prefer the user's live location; fall back to the Main Gate if location
+    // is unavailable or denied, so directions always work.
+    const live = await getCurrentPos()
     const gate = locations.find((l) => l.building_code === 'GATE-A') || locations[0]
-    const startLatLng = userPos || (gate ? [gate.lat, gate.lng] : CAMPUS_CENTER)
+    const startLatLng = live || (gate ? [gate.lat, gate.lng] : CAMPUS_CENTER)
     const start = [startLatLng[1], startLatLng[0]]  // -> [lng, lat]
     const end = [loc.lng, loc.lat]
     try {
@@ -255,9 +275,10 @@ export default function CampusMap() {
         duration: data.duration,
         fallback: data.fallback,
         dest: loc.name,
-        fromUser: !!userPos,
+        fromUser: !!live,
       })
       setActiveTab('map')
+      if (!live) setError('Using the Main Gate as the start — enable location access to route from where you are.')
     } catch {
       setError('Could not load directions. Check your connection and try again.')
     } finally {

@@ -15,6 +15,15 @@
       "osm_id": "way/595040448"
     },
     {
+      "key": "gate_b",
+      "name": "Gate B",
+      "lat": -1.2137861, "lng": 36.8805277,
+      "building_code": "GATE-B",
+      "category": "Access",
+      "description": "North-east campus entrance. Commonly used by pedestrians from the Kasarani side.",
+      "osm_id": "node/10301968923"
+    },
+    {
       "key": "admin",
       "name": "Administration Block",
       "lat": -1.2188232, "lng": 36.8791227,
