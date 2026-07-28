@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     # Optional: without it, /api/map/route falls back to a straight line.
     openrouteservice_api_key: str = ""
 
+    # Supabase — storage + metadata for Study Hub past papers.
+    # Project settings → API. Use the SERVICE ROLE key (server-side only).
+    # Optional: without these, uploads fall back to the Azure Search index.
+    supabase_url: str = ""
+    supabase_service_key: str = ""
+    supabase_bucket: str = "past-papers"
+
     # Database (optional — app works without it)
     database_url: str = ""
 

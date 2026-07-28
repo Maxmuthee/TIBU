@@ -1,14 +1,22 @@
-"""Study Hub — Past papers upload, listing, search, and download."""
+"""Study Hub — Past papers upload, listing, search, and download.
 
-import json
-import hashlib
-import base64
+Primary storage is Supabase: the file goes to a Storage bucket and its metadata
+to a `past_papers` Postgres table (accessed via Supabase's REST API). If Supabase
+is not configured, everything falls back to the legacy path that stores the file
+base64-encoded inside the Azure AI Search index — so the app keeps working either
+way.
+"""
+
 import io
-
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+import json
+import base64
+import hashlib
 from datetime import datetime
+
+import httpx
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.responses import StreamingResponse, RedirectResponse
+from pydantic import BaseModel
 
 from app.services.rag_engine import settings
 from azure.search.documents import SearchClient
@@ -16,13 +24,78 @@ from azure.core.credentials import AzureKeyCredential
 
 router = APIRouter()
 
-# ── Persistent paper metadata via the existing tibu-knowledge-base index ──────
-# Papers are stored as regular documents with source="past_paper".
-# This reuses the same index + credentials already working for chat — no new
-# Azure resources or index creation required.
+# ═══════════════════════════════════════════════════════════════════════════
+# Supabase storage (primary)
+# ═══════════════════════════════════════════════════════════════════════════
+_SB_URL = settings.supabase_url.rstrip("/")
+_SB_KEY = settings.supabase_service_key
+_SB_BUCKET = settings.supabase_bucket
 
+
+def _supabase_enabled() -> bool:
+    return bool(_SB_URL and _SB_KEY)
+
+
+def _sb_headers(extra: dict | None = None) -> dict:
+    h = {"apikey": _SB_KEY, "Authorization": f"Bearer {_SB_KEY}"}
+    if extra:
+        h.update(extra)
+    return h
+
+
+async def _sb_upload_file(paper_id: str, filename: str, content: bytes, content_type: str) -> tuple[str, str]:
+    """Upload bytes to the Storage bucket; return (storage_path, public_url)."""
+    path = f"{paper_id}/{filename}"
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.post(
+            f"{_SB_URL}/storage/v1/object/{_SB_BUCKET}/{path}",
+            headers=_sb_headers({"Content-Type": content_type, "x-upsert": "true"}),
+            content=content,
+        )
+        resp.raise_for_status()
+    public_url = f"{_SB_URL}/storage/v1/object/public/{_SB_BUCKET}/{path}"
+    return path, public_url
+
+
+async def _sb_insert_meta(meta: dict) -> None:
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(
+            f"{_SB_URL}/rest/v1/past_papers",
+            headers=_sb_headers({"Content-Type": "application/json", "Prefer": "return=minimal"}),
+            json=meta,
+        )
+        resp.raise_for_status()
+
+
+async def _sb_list(course_code: str = "") -> list[dict]:
+    params = {"select": "*", "order": "uploaded_at.desc"}
+    if course_code:
+        params["course_code"] = f"ilike.*{course_code.upper()}*"
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.get(
+            f"{_SB_URL}/rest/v1/past_papers", headers=_sb_headers(), params=params
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _sb_get(paper_id: str) -> dict | None:
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.get(
+            f"{_SB_URL}/rest/v1/past_papers",
+            headers=_sb_headers(),
+            params={"select": "*", "id": f"eq.{paper_id}", "limit": 1},
+        )
+        resp.raise_for_status()
+        rows = resp.json()
+        return rows[0] if rows else None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Azure AI Search index (legacy fallback)
+# ═══════════════════════════════════════════════════════════════════════════
 _PAPER_SOURCE = "past_paper"
-_ZERO_VECTOR  = [0.0] * 1536   # placeholder — papers aren't retrieved via vector search
+_ZERO_VECTOR = [0.0] * 1536  # placeholder — papers aren't retrieved via vector search
 
 
 def _kb_client() -> SearchClient:
@@ -33,8 +106,7 @@ def _kb_client() -> SearchClient:
     )
 
 
-def _load_papers(course_code: str = "") -> list[dict]:
-    """Fetch all paper metadata (without file data) from the knowledge base index."""
+def _kb_load_papers(course_code: str = "") -> list[dict]:
     try:
         results = _kb_client().search(
             search_text="*",
@@ -46,8 +118,7 @@ def _load_papers(course_code: str = "") -> list[dict]:
         for r in results:
             try:
                 paper = json.loads(r["content"])
-                # Strip heavy file data from listing — download endpoint serves the file
-                paper.pop("file_data", None)
+                paper.pop("file_data", None)  # strip heavy file data from listing
                 papers.append(paper)
             except Exception:
                 pass
@@ -59,8 +130,7 @@ def _load_papers(course_code: str = "") -> list[dict]:
         return []
 
 
-def _get_paper_with_file(paper_id: str) -> dict | None:
-    """Fetch a single paper document including its file data."""
+def _kb_get_paper_with_file(paper_id: str) -> dict | None:
     try:
         doc = _kb_client().get_document(key=f"paper-{paper_id}")
         return json.loads(doc["content"])
@@ -68,8 +138,7 @@ def _get_paper_with_file(paper_id: str) -> dict | None:
         return None
 
 
-def _save_paper(paper: dict) -> None:
-    """Persist a paper metadata document in the knowledge base index."""
+def _kb_save_paper(paper: dict) -> None:
     try:
         doc = {
             "id": f"paper-{paper['id']}",
@@ -83,19 +152,23 @@ def _save_paper(paper: dict) -> None:
         print(f"Warning: could not save paper to index: {e}")
 
 
-# In-memory cache (populated at startup; stays in sync via _save_paper)
-papers_db: list[dict] = _load_papers()
-
-
 class PaperSearch(BaseModel):
     course_code: str = ""
     query: str = ""
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Endpoints
+# ═══════════════════════════════════════════════════════════════════════════
 @router.get("/papers")
 async def list_papers(course_code: str = ""):
     """List all uploaded past papers, optionally filtered by course code."""
-    return {"papers": _load_papers(course_code)}
+    if _supabase_enabled():
+        try:
+            return {"papers": await _sb_list(course_code)}
+        except Exception as e:
+            print(f"Supabase list failed, falling back to index: {e}")
+    return {"papers": _kb_load_papers(course_code)}
 
 
 @router.post("/upload")
@@ -105,12 +178,12 @@ async def upload_paper(
     title: str = Form(""),
     year: str = Form(""),
 ):
-    """Upload a past paper or study material."""
+    """Upload a past paper. Stores the file in Supabase (or the Azure index)."""
     content = await file.read()
-
     paper_id = hashlib.md5(f"{file.filename}:{datetime.now().isoformat()}".encode()).hexdigest()[:16]
     content_type = file.content_type or "application/octet-stream"
-    paper = {
+
+    meta = {
         "id": paper_id,
         "filename": file.filename,
         "course_code": course_code.upper(),
@@ -119,40 +192,52 @@ async def upload_paper(
         "size_bytes": len(content),
         "content_type": content_type,
         "uploaded_at": datetime.now().isoformat(),
-        "file_data": base64.b64encode(content).decode("utf-8"),
     }
-    # Store stripped version in memory cache (no file_data to save RAM)
-    meta = {k: v for k, v in paper.items() if k != "file_data"}
-    papers_db.append(meta)
-    _save_paper(paper)
+
+    if _supabase_enabled():
+        try:
+            _, public_url = await _sb_upload_file(paper_id, file.filename, content, content_type)
+            meta["public_url"] = public_url
+            await _sb_insert_meta(meta)
+            return {"message": "Paper uploaded successfully!", "paper": meta}
+        except Exception as e:
+            print(f"Supabase upload failed, falling back to index: {e}")
+
+    # Fallback: base64 into the Azure Search index
+    paper = {**meta, "file_data": base64.b64encode(content).decode("utf-8")}
+    _kb_save_paper(paper)
     return {"message": "Paper uploaded successfully!", "paper": meta}
 
 
 @router.get("/papers/{paper_id}/download")
 async def download_paper(paper_id: str):
-    """Download a past paper file by its ID."""
-    paper = _get_paper_with_file(paper_id)
+    """Download a past paper by its ID."""
+    if _supabase_enabled():
+        try:
+            row = await _sb_get(paper_id)
+            if row and row.get("public_url"):
+                # Bucket is public — hand the browser the direct storage URL.
+                return RedirectResponse(row["public_url"])
+        except Exception as e:
+            print(f"Supabase download lookup failed, falling back to index: {e}")
+
+    paper = _kb_get_paper_with_file(paper_id)
     if not paper or not paper.get("file_data"):
         raise HTTPException(status_code=404, detail="Paper not found or file data unavailable.")
 
     file_bytes = base64.b64decode(paper["file_data"])
-    content_type = paper.get("content_type", "application/octet-stream")
-    filename = paper.get("filename", f"paper-{paper_id}")
-
     return StreamingResponse(
         io.BytesIO(file_bytes),
-        media_type=content_type,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        media_type=paper.get("content_type", "application/octet-stream"),
+        headers={"Content-Disposition": f'attachment; filename="{paper.get("filename", f"paper-{paper_id}")}"'},
     )
 
 
 @router.post("/search")
 async def search_papers(search: PaperSearch):
     """Search past papers by course code or keyword."""
-    results = []
-    for paper in papers_db:
-        if search.course_code and search.course_code.upper() in paper.get("course_code", "").upper():
-            results.append(paper)
-        elif search.query and search.query.lower() in paper.get("title", "").lower():
-            results.append(paper)
-    return {"results": results, "count": len(results)}
+    papers = await _sb_list(search.course_code) if _supabase_enabled() else _kb_load_papers(search.course_code)
+    if search.query:
+        q = search.query.lower()
+        papers = [p for p in papers if q in p.get("title", "").lower()]
+    return {"results": papers, "count": len(papers)}
