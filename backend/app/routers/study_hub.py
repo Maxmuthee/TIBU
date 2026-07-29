@@ -158,17 +158,47 @@ class PaperSearch(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Reusable helpers (shared with the admin router)
+# ═══════════════════════════════════════════════════════════════════════════
+async def load_papers(course_code: str = "") -> list[dict]:
+    """List papers from Supabase if configured, else the Azure Search index."""
+    if _supabase_enabled():
+        try:
+            return await _sb_list(course_code)
+        except Exception as e:
+            print(f"Supabase list failed, falling back to index: {e}")
+    return _kb_load_papers(course_code)
+
+
+async def delete_paper(paper_id: str) -> None:
+    """Delete a paper (file + metadata) from whichever backend holds it."""
+    if _supabase_enabled():
+        try:
+            row = await _sb_get(paper_id)
+            async with httpx.AsyncClient(timeout=20) as client:
+                if row and row.get("filename"):
+                    path = f"{paper_id}/{row['filename']}"
+                    await client.delete(
+                        f"{_SB_URL}/storage/v1/object/{_SB_BUCKET}/{path}", headers=_sb_headers()
+                    )
+                await client.delete(
+                    f"{_SB_URL}/rest/v1/past_papers",
+                    headers=_sb_headers(),
+                    params={"id": f"eq.{paper_id}"},
+                )
+            return
+        except Exception as e:
+            print(f"Supabase delete failed, falling back to index: {e}")
+    _kb_client().delete_documents([{"id": f"paper-{paper_id}"}])
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Endpoints
 # ═══════════════════════════════════════════════════════════════════════════
 @router.get("/papers")
 async def list_papers(course_code: str = ""):
     """List all uploaded past papers, optionally filtered by course code."""
-    if _supabase_enabled():
-        try:
-            return {"papers": await _sb_list(course_code)}
-        except Exception as e:
-            print(f"Supabase list failed, falling back to index: {e}")
-    return {"papers": _kb_load_papers(course_code)}
+    return {"papers": await load_papers(course_code)}
 
 
 @router.post("/upload")

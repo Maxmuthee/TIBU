@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.config import get_settings
 from app.routers.lost_found import items_db as lost_found_db
 from app.routers.opportunities import opportunities_db, events_db
-from app.routers.study_hub import _load_papers, _get_paper_with_file, _kb_client, _PAPER_SOURCE
+from app.routers.study_hub import load_papers, delete_paper
 
 router = APIRouter()
 security = HTTPBearer()
@@ -38,13 +38,13 @@ async def admin_login(req: LoginRequest):
 
 @router.get("/papers", dependencies=[Depends(verify_admin)])
 async def admin_list_papers():
-    return {"papers": _load_papers()}
+    return {"papers": await load_papers()}
 
 
 @router.delete("/papers/{paper_id}", dependencies=[Depends(verify_admin)])
 async def admin_delete_paper(paper_id: str):
     try:
-        _kb_client().delete_documents([{"id": f"paper-{paper_id}"}])
+        await delete_paper(paper_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"message": "Deleted."}
