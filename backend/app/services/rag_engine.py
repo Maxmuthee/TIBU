@@ -118,7 +118,7 @@ async def ask_tibu(question: str, conversation_history: list[dict] | None = None
         model=CHAT_DEPLOYMENT,
         messages=messages,
         temperature=0.3,
-        max_tokens=1000,
+        max_completion_tokens=1000,  # gpt-5-series requires this instead of max_tokens
     )
 
     answer = response.choices[0].message.content
