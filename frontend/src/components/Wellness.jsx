@@ -124,7 +124,7 @@ export default function Wellness() {
             <div>
               <p className="font-semibold mb-1">Could not load wellness resources</p>
               <p className="text-red-600/80">
-                For urgent support, contact the USIU Wellness Centre directly or call <span className="font-mono font-semibold">+254 730 116 000</span>.
+                For urgent support, contact the USIU Wellness Centre directly or call <span className="font-mono font-semibold">+254 730 116 400</span>.
               </p>
             </div>
           </div>

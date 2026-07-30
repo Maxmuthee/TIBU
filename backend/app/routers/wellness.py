@@ -8,16 +8,17 @@ WELLNESS_RESOURCES = {
     "counseling": {
         "title": "USIU Counseling Services",
         "description": "Free, confidential counseling for all enrolled students. Individual and group sessions available.",
-        "location": "Wellness Center, Ground Floor",
+        "location": "Freida Brown Student Centre, 2nd Floor",
         "contact": "wellness@usiu.ac.ke",
+        "phone": "+254 730 116 400",
         "hours": "Monday-Friday, 8:00 AM - 5:00 PM",
-        "how_to_book": "Walk in or email to schedule an appointment.",
+        "how_to_book": "Walk in, call, or email to schedule an appointment.",
     },
     "crisis": {
         "title": "Crisis & Emergency Support",
         "description": "If you or someone you know is in crisis, please reach out immediately.",
         "contacts": [
-            {"name": "USIU Wellness Center", "phone": "+254 XXX XXX XXX"},
+            {"name": "USIU Wellness Centre", "phone": "+254 730 116 400"},
             {"name": "Kenya Red Cross", "phone": "1199"},
             {"name": "Befrienders Kenya (24/7)", "phone": "+254 722 178 177"},
         ],
@@ -35,7 +36,7 @@ WELLNESS_RESOURCES = {
     "peer_support": {
         "title": "Peer Support Programs",
         "description": "Trained student peer counselors are available for informal conversations and support.",
-        "how_to_access": "Visit the Wellness Center or ask at the Student Life office.",
+        "how_to_access": "Visit the Wellness Centre (Freida Brown Student Centre, 2nd Floor) or ask at the Student Life office.",
     },
 }
 
