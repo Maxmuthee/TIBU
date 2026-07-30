@@ -9,13 +9,16 @@ class Settings(BaseSettings):
     azure_openai_embedding_deployment: str = "text-embedding-ada-002"
     azure_openai_api_version: str = "2024-08-01-preview"
 
-    # Azure AI Foundry — used for CHAT (gpt-oss-120b open model).
-    # Separate resource because Azure-for-Students has no GPT chat quota;
-    # the open model is served from an AIServices/Foundry account.
+    # CHAT model. Two supported setups:
+    #  1. Dedicated chat resource (e.g. Azure AI Foundry) → set the AZURE_CHAT_* vars.
+    #  2. Single Azure OpenAI resource (default) → leave AZURE_CHAT_* blank; chat then
+    #     reuses the embeddings resource above and this deployment name:
+    azure_openai_chat_deployment: str = "gpt-4o-mini"  # env: AZURE_OPENAI_CHAT_DEPLOYMENT
+    # Optional dedicated chat resource overrides (blank = fall back to Azure OpenAI):
     azure_chat_endpoint: str = ""
     azure_chat_api_key: str = ""
-    azure_chat_deployment: str = "gpt-oss-120b"
-    azure_chat_api_version: str = "2024-10-21"
+    azure_chat_deployment: str = ""
+    azure_chat_api_version: str = ""
 
     # Azure AI Search
     azure_search_endpoint: str = ""

@@ -21,12 +21,21 @@ openai_client = AsyncAzureOpenAI(
     api_version=settings.azure_openai_api_version.strip(),
 )
 
-# Azure AI Foundry async client — CHAT (gpt-oss-120b open model)
+# CHAT client. Prefer a dedicated chat resource (AZURE_CHAT_*); if those are
+# blank, fall back to the same Azure OpenAI resource used for embeddings so a
+# single-resource setup works out of the box.
+_chat_endpoint = (settings.azure_chat_endpoint or settings.azure_openai_endpoint).strip()
+_chat_api_key = (settings.azure_chat_api_key or settings.azure_openai_api_key).strip()
+_chat_api_version = (settings.azure_chat_api_version or settings.azure_openai_api_version).strip()
 chat_client = AsyncAzureOpenAI(
-    azure_endpoint=settings.azure_chat_endpoint.strip(),
-    api_key=settings.azure_chat_api_key.strip(),
-    api_version=settings.azure_chat_api_version.strip(),
+    azure_endpoint=_chat_endpoint,
+    api_key=_chat_api_key,
+    api_version=_chat_api_version,
 )
+
+# Effective chat deployment: dedicated field first, else the OpenAI-resource
+# chat deployment (AZURE_OPENAI_CHAT_DEPLOYMENT).
+CHAT_DEPLOYMENT = (settings.azure_chat_deployment or settings.azure_openai_chat_deployment).strip()
 
 # Azure AI Search async client
 search_client = AsyncSearchClient(
@@ -106,7 +115,7 @@ async def ask_tibu(question: str, conversation_history: list[dict] | None = None
 
     # Step 5: Get LLM response
     response = await chat_client.chat.completions.create(
-        model=settings.azure_chat_deployment,
+        model=CHAT_DEPLOYMENT,
         messages=messages,
         temperature=0.3,
         max_tokens=1000,
