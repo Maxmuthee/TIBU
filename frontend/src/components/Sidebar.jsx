@@ -5,7 +5,6 @@ import {
   Map,
   FileText,
   Briefcase,
-  Users,
   Search,
   Heart,
   X,
@@ -29,7 +28,6 @@ const PRIMARY_NAV = [
 const SECONDARY_NAV = [
   { id: 'study-hub',    label: 'Study Hub',      icon: FileText  },
   { id: 'opportunities',label: 'Opportunities',  icon: Briefcase },
-  { id: 'study-groups', label: 'Study Groups',   icon: Users     },
   { id: 'lost-found',   label: 'Lost & Found',   icon: Search    },
 ]
 

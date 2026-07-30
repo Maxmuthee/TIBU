@@ -51,13 +51,6 @@ export const getInternships = () => request('/opportunities/internships');
 export const getEvents = (category = '') =>
   request(`/opportunities/events?category=${category}`);
 
-// Study Groups
-export const getStudyProfiles = () => request('/study-groups/profiles');
-export const registerStudyProfile = (profile) =>
-  request('/study-groups/register', { method: 'POST', body: JSON.stringify(profile) });
-export const findStudyMatches = (profile) =>
-  request('/study-groups/match', { method: 'POST', body: JSON.stringify(profile) });
-
 // Lost & Found
 export const getLostFoundItems = (type = '') =>
   request(`/lost-found/items?item_type=${type}`);

@@ -8,7 +8,6 @@ import CourseAdvisor from './components/CourseAdvisor'
 import CampusMap from './components/CampusMap'
 import StudyHub from './components/StudyHub'
 import Opportunities from './components/Opportunities'
-import StudyGroups from './components/StudyGroups'
 import LostFound from './components/LostFound'
 import Wellness from './components/Wellness'
 import Microcredentials from './components/Microcredentials'
@@ -22,7 +21,6 @@ const VIEW_TITLES = {
   map: 'Campus Navigator',
   'study-hub': 'Study Hub & Past Papers',
   opportunities: 'Opportunities',
-  'study-groups': 'AI Study Group Matcher',
   'lost-found': 'Lost & Found',
   wellness: 'Wellness & Mental Health',
   microcredentials: 'Microcredentials Hub',
@@ -86,7 +84,6 @@ export default function App() {
       case 'map': return <CampusMap />
       case 'study-hub': return <StudyHub />
       case 'opportunities': return <Opportunities />
-      case 'study-groups': return <StudyGroups />
       case 'lost-found': return <LostFound />
       case 'wellness': return <Wellness />
       case 'microcredentials': return <Microcredentials />

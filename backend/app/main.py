@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import chat, courses, campus_map, study_hub, opportunities, study_groups, lost_found, wellness, microcredentials, admin
+from app.routers import chat, courses, campus_map, study_hub, opportunities, lost_found, wellness, microcredentials, admin
 
 settings = get_settings()
 
@@ -27,7 +27,6 @@ app.include_router(courses.router, prefix="/api/courses", tags=["Courses"])
 app.include_router(campus_map.router, prefix="/api/map", tags=["Campus Map"])
 app.include_router(study_hub.router, prefix="/api/study-hub", tags=["Study Hub"])
 app.include_router(opportunities.router, prefix="/api/opportunities", tags=["Opportunities"])
-app.include_router(study_groups.router, prefix="/api/study-groups", tags=["Study Groups"])
 app.include_router(lost_found.router, prefix="/api/lost-found", tags=["Lost & Found"])
 app.include_router(wellness.router, prefix="/api/wellness", tags=["Wellness"])
 app.include_router(microcredentials.router, prefix="/api/microcredentials", tags=["Microcredentials"])

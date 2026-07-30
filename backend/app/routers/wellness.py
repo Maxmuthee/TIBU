@@ -26,7 +26,7 @@ WELLNESS_RESOURCES = {
         "title": "Self-Help Resources",
         "tips": [
             "Take regular breaks during study sessions — try the 25/5 Pomodoro technique.",
-            "Stay connected — join a study group or club to combat isolation.",
+            "Stay connected — join a club or society to combat isolation.",
             "Exercise regularly — USIU's gym and sports facilities are free for students.",
             "Practice good sleep hygiene — aim for 7-8 hours per night.",
             "Talk to someone if you're feeling overwhelmed — it's a sign of strength, not weakness.",
